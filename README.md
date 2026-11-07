@@ -21,7 +21,7 @@ Then open https://localhost. Full instructions, tests and troubleshooting: [docs
 | `frontend/` | Next.js 15 dashboard (TypeScript, Tailwind) |
 | `infrastructure/docker/` | Caddy reverse proxy config |
 | `docs/` | Architecture, decisions, development guide |
-| `docs/research/` | [Index F&O strategy backtest](docs/research/fno_strategy_backtest.md): 10 strategies screened, 5 stress-tested, final strategy selected |
+| `docs/research/` | [Index F&O strategy backtest](docs/research/fno_strategy_backtest.md) (10 screened, 5 stress-tested) · [Sampled-month test with ₹30k](docs/research/sampled_month_backtest.md) |
 
 ## Phase 1 documents (architecture)
 

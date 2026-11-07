@@ -71,6 +71,13 @@ class Trade:
     margin: float
     legs: int
     daily_mtm: dict[date, float] = field(default_factory=dict)  # cumulative P&L at closes
+    lot: int = 0  # exchange lot size used (quantity per strategy lot)
+    entry_spot: float = 0.0
+    fills: list[tuple[float, bool, int, float]] = field(
+        default_factory=list
+    )  # strike, call, qty, px
+    expiry: date | None = None
+    orders: int = 0
 
     @property
     def net(self) -> float:
@@ -146,11 +153,19 @@ def simulate_options(
     n = exit_ - entry + 1
     fills0 = []
     costs = 0.0
+    entry_day = path.days[path.day_pos[entry]]
+    exit_day_holder = [entry_day]
+
+    def on(day: date) -> date | None:
+        return day if slip.historical_rates else None
+
     for leg, a in zip(legs, arrs, strict=True):
         px = a["open"][0]
         fill = px - slip.option(px) if leg.qty < 0 else px + slip.option(px)
         fills0.append(max(fill, 0.05))
-        costs += option_order_cost(fill, abs(leg.qty) * lot, "SELL" if leg.qty < 0 else "BUY")
+        costs += option_order_cost(
+            fill, abs(leg.qty) * lot, "SELL" if leg.qty < 0 else "BUY", on(entry_day)
+        )
     q = np.array([leg.qty * lot for leg in legs], dtype=float)
     p0 = np.array(fills0)
     open_ = np.ones(len(legs), dtype=bool)
@@ -162,7 +177,10 @@ def simulate_options(
         nonlocal costs
         fill = px + slip.option(px) if legs[j].qty < 0 else max(px - slip.option(px), 0.05)
         costs += option_order_cost(
-            fill, abs(legs[j].qty) * lot, "BUY" if legs[j].qty < 0 else "SELL"
+            fill,
+            abs(legs[j].qty) * lot,
+            "BUY" if legs[j].qty < 0 else "SELL",
+            on(exit_day_holder[0]),
         )
         return float(q[j] * (fill - p0[j]))
 
@@ -212,6 +230,7 @@ def simulate_options(
                 if len(hit) and hit[0] < comb_t:
                     comb_t, comb_kind = int(hit[0]), "target"
         first = int(min(nxt_leg[0], comb_t, sig_rel, n - 1))
+        exit_day_holder[0] = path.days[path.day_pos[entry + first]]
         if nxt_leg[0] == first and nxt_leg[0] < n - 1 and nxt_leg[0] <= comb_t:
             j = nxt_leg[1]
             a = arrs[j]
@@ -290,6 +309,11 @@ def simulate_options(
         margin,
         len(legs),
         daily,
+        lot=lot,
+        entry_spot=float(path.open[entry]),
+        fills=[(leg.strike, leg.is_call, leg.qty, float(p0[j])) for j, leg in enumerate(legs)],
+        expiry=min(leg.expiry for leg in legs),
+        orders=2 * len(legs),
     )
 
 
@@ -318,14 +342,19 @@ def simulate_futures(
         i: float(path.close[(i + 1) * BARS_PER_DAY - 1]) for i in range(len(path.days))
     }
 
+    def on(day: date) -> date | None:
+        return day if slip.historical_rates else None
+
     def close_trade(i_exit: int, px: float) -> None:
         nonlocal costs
         fill = px - sl * pos
-        costs += futures_order_cost(fill, lot, "SELL" if pos > 0 else "BUY")
         d0, d1 = path.days[path.day_pos[entry_i]], path.days[path.day_pos[i_exit]]
+        costs += futures_order_cost(fill, lot, "SELL" if pos > 0 else "BUY", on(d1))
         rolls = sum(1 for e in monthly_expiries if d0 <= e < d1)
         costs += rolls * (
-            futures_order_cost(px, lot, "BUY") + futures_order_cost(px, lot, "SELL") + 2 * sl * lot
+            futures_order_cost(px, lot, "BUY", on(d1))
+            + futures_order_cost(px, lot, "SELL", on(d1))
+            + 2 * sl * lot
         )
         carry_cost = carry * entry_px * lot * (d1 - d0).days / 365 * pos
         gross = (fill - entry_px) * lot * pos - carry_cost
@@ -335,7 +364,19 @@ def simulate_futures(
         }
         trades.append(
             Trade(
-                name, index, d0, d1, gross, costs, "signal", margin_pct * entry_px * lot, 1, marks
+                name,
+                index,
+                d0,
+                d1,
+                gross,
+                costs,
+                "signal",
+                margin_pct * entry_px * lot,
+                1,
+                marks,
+                lot=lot,
+                entry_spot=entry_px,
+                orders=2 + 4 * rolls,
             )
         )
         costs = 0.0
@@ -350,7 +391,9 @@ def simulate_futures(
         if target != 0:
             entry_px = px + sl * target
             entry_i = i + 1
-            costs = futures_order_cost(entry_px, lot, "BUY" if target > 0 else "SELL")
+            costs = futures_order_cost(
+                entry_px, lot, "BUY" if target > 0 else "SELL", on(path.days[path.day_pos[i + 1]])
+            )
         pos = target
     if pos != 0:
         close_trade(len(signals) - 1, float(path.close[-1]))

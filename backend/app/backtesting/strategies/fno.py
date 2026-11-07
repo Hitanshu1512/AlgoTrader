@@ -37,6 +37,16 @@ class Ctx:
     step: int
     slip: Slippage = field(default_factory=Slippage)
     vix_close: pd.Series | None = None
+    # Optional per-(trade date, expiry) exchange lot size; defaults to ``lot``.
+    lot_fn: Callable[[date, date], int] | None = None
+    # Optional restriction of entry days (e.g. sampled months); exits may fall later.
+    entry_days: frozenset[date] | None = None
+
+    def lot_for(self, d: date, e: date) -> int:
+        return self.lot_fn(d, e) if self.lot_fn else self.lot
+
+    def may_enter(self, d: date) -> bool:
+        return self.entry_days is None or d in self.entry_days
 
     def day_path(self, d: date) -> tuple[Path, LegPricer]:
         path = Path.from_days([self.bars[d]])
@@ -68,8 +78,8 @@ class Ctx:
         return float(k[np.argmin(np.abs(delta - target))])
 
 
-def _naked_margin(ctx: Ctx, spot: float, d: date) -> float:
-    return (NAKED_MARGIN + (EXPIRY_ELM if ctx.cal.is_expiry(d) else 0.0)) * spot * ctx.lot
+def _naked_margin(ctx: Ctx, spot: float, d: date, lot: int) -> float:
+    return (NAKED_MARGIN + (EXPIRY_ELM if ctx.cal.is_expiry(d) else 0.0)) * spot * lot
 
 
 # ───────────────────────── intraday short premium ─────────────────────────
@@ -87,19 +97,22 @@ def straddle_920(
     Optional long wings at ``hedge_delta`` cap the loss if a stop fails and cut margin."""
     out = []
     for d in ctx.sessions:
+        if not ctx.may_enter(d):
+            continue
         if expiry_only and not ctx.cal.is_expiry(d):
             continue
         e = ctx.cal.nearest(d)
+        lot = ctx.lot_for(d, e)
         path, pricer = ctx.day_path(d)
         spot = float(path.open[entry_bar])
         k = ctx.atm(spot)
         legs = [Leg(k, True, -1, e), Leg(k, False, -1, e)]
-        margin = _naked_margin(ctx, spot, d)
+        margin = _naked_margin(ctx, spot, d, lot)
         if hedge_delta is not None:
             hc = max(ctx.by_delta(pricer, d, e, spot, entry_bar, hedge_delta, True), k + ctx.step)
             hp = min(ctx.by_delta(pricer, d, e, spot, entry_bar, hedge_delta, False), k - ctx.step)
             legs += [Leg(hc, True, 1, e), Leg(hp, False, 1, e)]
-            margin = max(hc - k, k - hp) * ctx.lot * 1.1
+            margin = max(hc - k, k - hp) * lot * 1.1
         out.append(
             simulate_options(
                 name,
@@ -108,7 +121,7 @@ def straddle_920(
                 legs,
                 entry_bar,
                 EXIT_1515,
-                ctx.lot,
+                lot,
                 ctx.slip,
                 margin,
                 leg_sl_pct=sl,
@@ -129,18 +142,21 @@ def strangle_920(
     (bought for protection and the hedged-margin benefit; the wings are held to 15:15)."""
     out = []
     for d in ctx.sessions:
+        if not ctx.may_enter(d):
+            continue
         e = ctx.cal.nearest(d)
+        lot = ctx.lot_for(d, e)
         path, pricer = ctx.day_path(d)
         spot = float(path.open[entry_bar])
         kc = ctx.by_delta(pricer, d, e, spot, entry_bar, delta, True)
         kp = ctx.by_delta(pricer, d, e, spot, entry_bar, delta, False)
         legs = [Leg(kc, True, -1, e), Leg(kp, False, -1, e)]
-        margin = _naked_margin(ctx, spot, d)
+        margin = _naked_margin(ctx, spot, d, lot)
         if hedge_delta is not None:
             hc = max(ctx.by_delta(pricer, d, e, spot, entry_bar, hedge_delta, True), kc + ctx.step)
             hp = min(ctx.by_delta(pricer, d, e, spot, entry_bar, hedge_delta, False), kp - ctx.step)
             legs += [Leg(hc, True, 1, e), Leg(hp, False, 1, e)]
-            margin = max(hc - kc, kp - hp) * ctx.lot * 1.1
+            margin = max(hc - kc, kp - hp) * lot * 1.1
         out.append(
             simulate_options(
                 name,
@@ -149,7 +165,7 @@ def strangle_920(
                 legs,
                 entry_bar,
                 EXIT_1515,
-                ctx.lot,
+                lot,
                 ctx.slip,
                 margin,
                 leg_sl_pct=sl,
@@ -162,7 +178,10 @@ def iron_fly_920(ctx: Ctx, sl_frac: float = 0.35, name: str = "920 iron fly") ->
     """Short ATM straddle hedged with wings at ± the straddle premium; combined stop."""
     out = []
     for d in ctx.sessions:
+        if not ctx.may_enter(d):
+            continue
         e = ctx.cal.nearest(d)
+        lot = ctx.lot_for(d, e)
         path, pricer = ctx.day_path(d)
         spot = float(path.open[ENTRY_920])
         k = ctx.atm(spot)
@@ -185,10 +204,10 @@ def iron_fly_920(ctx: Ctx, sl_frac: float = 0.35, name: str = "920 iron fly") ->
                 legs,
                 ENTRY_920,
                 EXIT_1515,
-                ctx.lot,
+                lot,
                 ctx.slip,
-                w * ctx.lot,
-                comb_sl=sl_frac * credit * ctx.lot,
+                w * lot,
+                comb_sl=sl_frac * credit * lot,
             )
         )
     return out
@@ -205,6 +224,8 @@ def _series_entries(ctx: Ctx, max_dte: int, min_dte: int = 1) -> list[tuple[int,
         e = ctx.cal.nearest(d, min_days=1)
         dte = (e - d).days
         if e in seen or dte > max_dte or dte < min_dte or e > ctx.sessions[-1]:
+            continue
+        if not ctx.may_enter(d):
             continue
         seen.add(e)
         out.append((i, e))
@@ -230,6 +251,7 @@ def iron_condor(
         j = _session_of(ctx, e)
         path, pricer = ctx.span_path(i, j)
         d = ctx.sessions[i]
+        lot = ctx.lot_for(d, e)
         spot = float(path.open[ENTRY_920])
         kc = ctx.by_delta(pricer, d, e, spot, ENTRY_920, short_delta, True)
         kp = ctx.by_delta(pricer, d, e, spot, ENTRY_920, short_delta, False)
@@ -252,11 +274,11 @@ def iron_condor(
                 legs,
                 ENTRY_920,
                 exit_bar,
-                ctx.lot,
+                lot,
                 ctx.slip,
-                w * ctx.lot,
-                comb_sl=sl_mult * credit * ctx.lot,
-                comb_tp=tp * credit * ctx.lot,
+                w * lot,
+                comb_sl=sl_mult * credit * lot,
+                comb_tp=tp * credit * lot,
             )
         )
     return out
@@ -282,6 +304,7 @@ def trend_credit_spread(
         j = _session_of(ctx, e)
         path, pricer = ctx.span_path(i, j)
         d = ctx.sessions[i]
+        lot = ctx.lot_for(d, e)
         spot = float(path.open[ENTRY_920])
         w = max(ctx.step, round(width_pct * spot / ctx.step) * ctx.step)
         if bullish:
@@ -302,11 +325,11 @@ def trend_credit_spread(
                 legs,
                 ENTRY_920,
                 exit_bar,
-                ctx.lot,
+                lot,
                 ctx.slip,
-                w * ctx.lot,
-                comb_sl=sl_mult * credit * ctx.lot,
-                comb_tp=tp * credit * ctx.lot,
+                w * lot,
+                comb_sl=sl_mult * credit * lot,
+                comb_tp=tp * credit * lot,
             )
         )
     return out
@@ -322,6 +345,8 @@ def orb_option_buying(
     Stop: spot closes back beyond the opposite end; target: 2× range beyond breakout."""
     out = []
     for d in ctx.sessions:
+        if not ctx.may_enter(d):
+            continue
         b = ctx.bars[d]
         hi, lo = float(b.high[:range_bars].max()), float(b.low[:range_bars].min())
         c = b.close
@@ -335,6 +360,7 @@ def orb_option_buying(
         sig = min(first_up, first_dn)
         entry = sig + 1
         e = ctx.cal.nearest(d)
+        lot = ctx.lot_for(d, e)
         path, pricer = ctx.day_path(d)
         k = ctx.atm(float(path.open[entry]))
         rng = hi - lo
@@ -352,9 +378,9 @@ def orb_option_buying(
                 [leg],
                 entry,
                 EXIT_1515,
-                ctx.lot,
+                lot,
                 ctx.slip,
-                prem * ctx.lot,
+                prem * lot,
                 exit_signal=exit_sig,
             )
         )
@@ -382,6 +408,7 @@ def low_vix_long_straddle(
         j = max(_session_of(ctx, e) - 1, i)  # exit the session before expiry
         path, pricer = ctx.span_path(i, j)
         d = ctx.sessions[i]
+        lot = ctx.lot_for(d, e)
         k = ctx.atm(float(path.open[ENTRY_920]))
         legs = [Leg(k, True, 1, e), Leg(k, False, 1, e)]
         prem = sum(pricer.quote(leg, ENTRY_920) for leg in legs)
@@ -393,11 +420,11 @@ def low_vix_long_straddle(
                 legs,
                 ENTRY_920,
                 path.index(j - i, EXIT_1515),
-                ctx.lot,
+                lot,
                 ctx.slip,
-                prem * ctx.lot,
-                comb_sl=sl * prem * ctx.lot,
-                comb_tp=tp * prem * ctx.lot,
+                prem * lot,
+                comb_sl=sl * prem * lot,
+                comb_tp=tp * prem * lot,
             )
         )
         _ = d
@@ -451,8 +478,19 @@ def supertrend_futures(ctx: Ctx, period: int = 10, mult: float = 3.0, tf: int = 
     for t in range(period * 2, len(c)):
         end = last[t + 1] if t + 1 < len(c) else len(path.close) - 1
         target[last[t] : end] = direction[t]
+    lot = ctx.lot
+    if ctx.entry_days is not None:
+        # Indicator warms up on earlier data; positions only on entry days, and every
+        # position is flattened at 15:15 on the last entry day of each contiguous block.
+        active = np.array([d in ctx.entry_days for d in path.days])
+        bar_active = np.repeat(active, BARS_PER_DAY)
+        nxt_active = np.r_[active[1:], False]
+        last_block_day = np.repeat(active & ~nxt_active, BARS_PER_DAY)
+        target = np.where(bar_active & ~(last_block_day & (path.bar >= EXIT_1515 - 1)), target, 0)
+        first = next(d for d in path.days if d in ctx.entry_days)
+        lot = ctx.lot_for(first, ctx.cal.nearest(first))
     return simulate_futures(
-        "Supertrend futures", ctx.index, path, target, ctx.lot, ctx.slip, _monthly(ctx)
+        "Supertrend futures", ctx.index, path, target, lot, ctx.slip, _monthly(ctx)
     )
 
 

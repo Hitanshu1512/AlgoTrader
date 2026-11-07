@@ -1,6 +1,6 @@
 # Index F&O Strategy Backtest: Nifty 50 & Bank Nifty
 
-Status: **Research complete. Strategy selected for paper trading, not for live money.** · Run date: 2026-11-07
+Status: **Research complete. Strategy selected for paper trading, not for live money.** · Run date: 2026-11-07 · **Margin figures corrected 2026-11-07** (see [sampled-month study §8](sampled_month_backtest.md#8-correction-to-the-full-period-study))
 
 > **Read this first.**
 > * Option prices in this study are **modelled**, not recorded tick data. The model is anchored every day to real NSE closing prices and was validated on ~45,000 real option prices (§2.3). Its key untested assumption is how fast expiry-day options lose value *between* 11:00 and 15:15 (§6.4).
@@ -75,7 +75,7 @@ No free source publishes historical *minute-level* option prices, so every optio
 * Orders fill at the next bar's open after the decision, **plus slippage of max(0.5% of premium, ₹0.10)** per option fill (1 point Nifty / 3 points Bank Nifty per futures fill).
 * Stop-losses are checked against each minute's **worst** point (the spot high for short calls, the spot low for short puts). If price gaps through a stop, it fills at the bar's open, not at the stop level.
 * Stress mode doubles slippage and fills every stop at the worst price seen in that minute.
-* Margin is approximated as 11% of notional for naked short options (+2% extra-loss margin on expiry day) or wing width × lot for hedged positions. Confirm real figures in Upstox's margin calculator.
+* Margin is approximated as 11% of notional for naked short options (+2% extra-loss margin on expiry day). The hedged-position estimate originally used here (wing width × lot) **omitted the 2% ELM and the expiry-day ELM, so it was too low**. The corrected model is `app/backtesting/margin.py`, documented in the sampled-month study. Per-lot P&L is unaffected. Confirm real figures in Upstox's margin calculator.
 
 ## 3. The 10 strategies screened
 
@@ -172,14 +172,14 @@ The full parameter surface is smooth, with the peak **inside** the grid, not at 
 ### 5.3 Disaster wings
 
 Buying ~0.01-delta wings (far out-of-the-money, very cheap on expiry morning) costs about ₹11k a year per lot in this backtest, but:
-* cuts estimated margin from ~₹1.6 lakh to ~₹47k per lot;
+* reduces margin, though by less than first estimated: about ₹0.9–1.3 lakh per lot on expiry day at 2025–26 contract sizes (corrected; the original "~₹47k" omitted ELM);
 * caps the loss if a stop-loss order is not executed (broker outage, freeze, rejection). The backtest assumes stops always work; the wings cover the case where they don't.
 
 | Nifty, per lot | No wings | Δ0.01 wings | Δ0.02 wings |
 |---|---:|---:|---:|
 | Net P&L | ₹4,32,780 | ₹3,70,945 | ₹3,47,212 |
 | Sharpe | 3.94 | 3.49 | 3.30 |
-| Est. margin | ₹1,60,882 | ₹46,825 | ₹37,018 |
+| Est. margin (original estimate, **understated**; see note above) | ₹1,60,882 | ₹46,825 | ₹37,018 |
 | Stress (2× slip, worst fills) | ₹3,52,024 | ₹2,86,320 | ₹2,62,525 |
 
 ## 6. The final strategy
@@ -218,8 +218,8 @@ The same rules on Bank Nifty: ₹4.89 lakh, Sharpe 3.71, holdout Sharpe 3.31. Th
 
 ### 6.3 Capital and realistic expectations
 
-* **Margin:** ~₹47k per lot for the hedged position (estimate). **Recommended capital: ₹1.5 lakh per lot.** That covers margin spikes plus the 99th-percentile drawdown several times over.
-* **Backtest expectation:** ≈ ₹66k per lot per year after charges (≈ 44% on ₹1.5 lakh).
+* **Margin (corrected):** ≈ ₹0.9–1.3 lakh per lot on expiry day at 2025–26 contract sizes (SPAN ≈ max loss + 2% ELM + 2% expiry-day ELM + wing premium). **Minimum capital ≈ ₹1.5 lakh per lot; recommended ≈ ₹2 lakh**, to absorb margin spikes and drawdowns. The original "₹47k margin / ₹1.5 lakh recommended" understated the requirement.
+* **Backtest expectation:** ≈ ₹66k per lot per year after charges (≈ 33% on ₹2 lakh).
 * **Plan for less:** the conservative case (stress fills + options holding 50% more value after entry) is ≈ ₹20k per lot per year (Sharpe 1.1). Real trading usually lands below a backtest. Treat the conservative case as the planning number until paper trading says otherwise.
 
 ### 6.4 The main remaining model risk: afternoon decay on expiry day
@@ -239,7 +239,7 @@ The final settings beat the default in every scenario. Whether the edge is large
 
 1. **Measure real intraday decay.** Use Upstox historical candles for expired Nifty option contracts if your plan provides them. Otherwise, record live 1-minute option prices every expiry day during paper trading. Compare them with the model's path from 11:00 to 15:15.
 2. **Paper-trade ≥ 12 expiries** (≈ 3 months) through the Phase 5 paper broker on live Upstox data. Go/no-go: average realized slippage ≤ 1% of premium; P&L within the backtest's 10th–90th percentile range; every stop placed and confirmed.
-3. **Live Phase 8a:** 1 lot, manual approval of each entry, kill switch tested, daily loss limit ≈ ₹6,000 (≈ 1.3× the worst historical trade).
+3. **Live Phase 8a:** 1 lot, manual approval of each entry, kill switch tested, daily loss limit ≈ ₹6,000 (≈ 1.3× the worst historical trade). With ₹30,000 the strategy cannot be margined at current lot sizes (sampled-month study).
 4. **Regulatory watch:** SEBI has repeatedly targeted expiry-day speculation (weekly-expiry limits, expiry-day extra margin, Tuesday expiry move). A future rule could remove or change the 0DTE opportunity. Re-run this study after any F&O circular.
 
 ## 8. Implications for the AlgoTrader build

@@ -53,7 +53,9 @@ def load_banknifty(raw: Path = RAW) -> pd.DataFrame:
     return _clean(df[["ts", "open", "high", "low", "close"]])
 
 
-def load_vix(raw: Path = RAW) -> pd.DataFrame:
+def load_vix(raw: Path = RAW, include_proxy: bool = False) -> pd.DataFrame:
+    """India VIX daily open/close. ``include_proxy`` appends the 2026 option-implied
+    substitute (research/vix_proxy.py) after the last real VIX date."""
     df = pd.read_csv(raw / "indiavix" / "vix.csv", parse_dates=["Date"])
     df = df.rename(columns={"Date": "date", "Open": "open", "Close": "close"})[
         ["date", "open", "close"]
@@ -62,7 +64,14 @@ def load_vix(raw: Path = RAW) -> pd.DataFrame:
     # Yahoo India VIX has occasional bad prints; clamp to the historically possible range.
     for c in ("open", "close"):
         df[c] = df[c].clip(8, 90)
-    return df.drop_duplicates("date").set_index("date").sort_index()
+    out = df.drop_duplicates("date").set_index("date").sort_index()
+    proxy_file = CACHE / "vix_2026_proxy.csv"
+    if include_proxy and proxy_file.exists():
+        px = pd.read_csv(proxy_file, parse_dates=["date"])
+        px["date"] = px["date"].dt.date
+        px = px[px["date"] > out.index.max()].set_index("date")[["open", "close"]]
+        out = pd.concat([out, px]).sort_index()
+    return out
 
 
 @dataclass

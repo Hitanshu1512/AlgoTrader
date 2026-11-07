@@ -13,3 +13,7 @@
 | 2026-11-07 | Owner requested index F&O strategy research (Nifty 50, Bank Nifty). **F&O moves into V1 scope**; equity intraday/swing remain supported by the platform | Owner |
 | 2026-11-07 | **First strategy for paper trading: Nifty 50 expiry-day hedged short straddle** (11:00 entry, 50% per-leg stop, ~Δ0.01 wings, exit 15:15). Chosen from 10 screened / 5 stress-tested strategies; see `docs/research/fno_strategy_backtest.md` | Research result, owner to approve |
 | 2026-11-07 | Live money for this strategy only after: real intraday decay measured, ≥12 paper-traded expiries within go/no-go limits, Phase 8 checklist | Safety rule |
+| 2026-11-07 | Sampled-month test (7 random months 2020–26, ₹30k accounts): **no shortlisted strategy is executable with ₹30,000 at 2025–26 contract sizes**; 0 signals could be margined in Jun 2025 and Jan 2026 | Research result |
+| 2026-11-07 | Candidates for further testing (capital-adequate): 1) expiry-day hedged straddle (Nifty, Bank Nifty secondary), 2) expiry-day straddle (Nifty), 3) 9:20 short strangle (Nifty). Minimum capital ≈ ₹1.5 lakh (1) / ≈ ₹2.7 lakh (2, 3) per lot | Research result, owner to decide capital |
+| 2026-11-07 | Correction: hedged-straddle margin is ≈ ₹0.9–1.3 lakh per lot, not ~₹47k (ELM was omitted). Recommended capital for 1 lot raised to ≈ ₹2 lakh | Correction |
+
