@@ -22,3 +22,6 @@ node_modules/
 .DS_Store
 .idea/
 .vscode/
+
+# Research datasets (downloaded by scripts/fetch_research_data.sh)
+backend/data/

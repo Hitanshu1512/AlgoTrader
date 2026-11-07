@@ -18,6 +18,9 @@ dependencies = [
     "cryptography>=43",
     "structlog>=24.1",
     "email-validator>=2.1",
+    "numpy>=2.0",
+    "pandas>=2.2",
+    "scipy>=1.13",
 ]
 
 [dependency-groups]
@@ -29,6 +32,9 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
 ]
+
+[project.optional-dependencies]
+research = ["matplotlib>=3.9", "pyarrow>=17"]
 
 [build-system]
 requires = ["hatchling"]
@@ -43,11 +49,12 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC", "RUF"]
-ignore = ["S101", "B008", "RUF012"]
+ignore = ["S101", "B008", "RUF012", "RUF001", "RUF002", "RUF003"]  # math/₹ symbols are intentional
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106"]
 "migrations/**" = ["E501"]
+"research/**" = ["E501", "S603", "S607", "E402"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -56,7 +63,7 @@ plugins = ["pydantic.mypy"]
 exclude = ["migrations/"]
 
 [[tool.mypy.overrides]]
-module = ["segno.*", "pyotp.*"]
+module = ["segno.*", "pyotp.*", "scipy.*", "matplotlib.*", "pandas.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -10,3 +10,6 @@
 | 2026-11-07 | Still open (needed before Phase 4/8): starting capital and max daily loss; whether a static IP is already registered with Upstox | Owner to answer |
 | 2026-11-07 | Phase 2 creates only identity/audit tables; later tables arrive with the phase that uses them (incremental migrations, not one big schema) | Implementation |
 | 2026-11-07 | Python dependency management with `uv` (lockfile `backend/uv.lock`) | Implementation |
+| 2026-11-07 | Owner requested index F&O strategy research (Nifty 50, Bank Nifty). **F&O moves into V1 scope**; equity intraday/swing remain supported by the platform | Owner |
+| 2026-11-07 | **First strategy for paper trading: Nifty 50 expiry-day hedged short straddle** (11:00 entry, 50% per-leg stop, ~Δ0.01 wings, exit 15:15). Chosen from 10 screened / 5 stress-tested strategies; see `docs/research/fno_strategy_backtest.md` | Research result, owner to approve |
+| 2026-11-07 | Live money for this strategy only after: real intraday decay measured, ≥12 paper-traded expiries within go/no-go limits, Phase 8 checklist | Safety rule |
