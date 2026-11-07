@@ -1,0 +1,94 @@
+# Local full-stack run and the basis for the single-host staging/production deployment.
+#   1. cp .env.example .env   (set POSTGRES_PASSWORD)
+#   2. ./scripts/init-secrets.sh
+#   3. docker compose up -d --build
+#   4. docker compose exec api algotrader create-owner --email you@example.com
+#   5. open https://localhost
+
+name: algotrader
+
+x-backend-env: &backend-env
+  ALGOTRADER_APP_ENV: ${ALGOTRADER_APP_ENV:-development}
+  ALGOTRADER_TRADING_ENV: paper
+  ALGOTRADER_DATABASE_URL: postgresql+asyncpg://algotrader:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/algotrader
+  ALGOTRADER_REDIS_URL: redis://redis:6379/0
+  ALGOTRADER_MASTER_KEY_FILE: /run/secrets/master_key
+  ALGOTRADER_PUBLIC_ORIGIN: https://${ALGOTRADER_DOMAIN:-localhost}
+  ALGOTRADER_COOKIE_SECURE: "true"
+  ALGOTRADER_LOG_LEVEL: ${ALGOTRADER_LOG_LEVEL:-INFO}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: algotrader
+      POSTGRES_USER: algotrader
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U algotrader -d algotrader"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", ""]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    image: algotrader/backend:local
+    build: ./backend
+    command: ["alembic", "upgrade", "head"]
+    environment: *backend-env
+    secrets: [master_key]
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    image: algotrader/backend:local
+    build: ./backend
+    restart: unless-stopped
+    environment: *backend-env
+    secrets: [master_key]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
+  web:
+    image: algotrader/frontend:local
+    build: ./frontend
+    restart: unless-stopped
+    depends_on: [api]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ALGOTRADER_DOMAIN: ${ALGOTRADER_DOMAIN:-localhost}
+    volumes:
+      - ./infrastructure/docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+    depends_on: [api, web]
+
+secrets:
+  master_key:
+    file: ./secrets/master_key
+
+volumes:
+  pgdata:
+  redisdata:
+  caddydata:
