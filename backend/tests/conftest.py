@@ -31,7 +31,7 @@ TEST_DB = os.environ.get(
 TEST_REDIS = os.environ.get("ALGOTRADER_TEST_REDIS_URL", "redis://localhost:6379/15")
 ORIGIN = "http://testserver"
 OWNER_EMAIL = "owner@example.com"
-OWNER_PASSWORD = "Correct-Horse-42-battery"
+OWNER_PASSWORD = "Correct-Horse-42-battery"  # gitleaks:allow (test fixture, not a real credential)
 
 
 def make_settings(**overrides: Any) -> Settings:
