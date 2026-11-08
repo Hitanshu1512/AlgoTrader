@@ -9,6 +9,8 @@ not part of our dataset, so this is a documented approximation:
   short ATM straddle are ≈ 10–12% / 13–14% of notional.
 * Hedged (defined-risk) positions: SPAN ≈ min(maximum loss, naked SPAN); ELM still applies
   to the short legs (2% of notional, one side); premium paid for long legs must be funded.
+* Debit spreads (net premium paid, short leg covered): margin = premium paid + ELM on the
+  short leg; there is no further loss to secure.
 * Additional ELM of 2% of notional on short options on their expiry day (SEBI, effective
   20 Nov 2024).
 * Index futures: ≈ 11% of notional (SPAN + ELM).
@@ -61,6 +63,10 @@ def option_margin(legs: list[LegFill], spot: float, lot: int, on: date, expiry: 
                 widths.append(float("inf"))  # an unhedged side keeps the naked SPAN
         max_loss = (max(widths) - credit) * lot if widths else 0.0
         span = min(max(max_loss, 0.0), naked_span)
+        if credit <= 0 and widths and max(widths) < float("inf"):
+            # Debit spread: the most it can lose is the net premium, paid up front.
+            elm = ELM_PCT * notional * sides
+            return elm + (-credit) * lot
     elm = ELM_PCT * notional * sides
     if on >= EXPIRY_ELM_FROM and on == expiry:
         elm += EXPIRY_ELM_PCT * notional * sides
