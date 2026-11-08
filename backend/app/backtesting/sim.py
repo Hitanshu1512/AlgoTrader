@@ -79,6 +79,7 @@ class Trade:
     expiry: date | None = None
     orders: int = 0
     slippage: float = 0.0  # ₹ lost to modelled bid-ask spread / impact (already in gross)
+    exit_bar: int = -1  # path index of the bar whose open/level closed the position
 
     @property
     def net(self) -> float:
@@ -319,6 +320,7 @@ def simulate_options(
         expiry=min(leg.expiry for leg in legs),
         orders=2 * len(legs),
         slippage=float(slip_cost),
+        exit_bar=int(entry + exit_pos),
     )
 
 
