@@ -1,0 +1,37 @@
+date,instrument,strategy,action,reason,equity,expiry,entry_time,legs,lot_size,risk_per_lot,margin_per_lot,lots,qty,margin_used,planned_risk,net_pnl,charges
+2020-11-05,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹99,441, available ₹90,000",100000.0,2020-11-05,09:20,S 12050CE; S 12050PE,75,3547.61,99441.38,,,,,,
+2020-11-12,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹104,980, available ₹90,000",100000.0,2020-11-12,09:20,S 12700CE; S 12700PE,75,2563.18,104979.6,,,,,,
+2020-11-19,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹106,342, available ₹90,000",100000.0,2020-11-19,09:20,S 12900CE; S 12900PE,75,1914.08,106341.68,,,,,,
+2020-11-26,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹106,242, available ₹90,000",100000.0,2020-11-26,09:20,S 12900CE; S 12900PE,75,2550.57,106241.85,,,,,,
+2021-04-01,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹122,172, available ₹90,000",100000.0,2021-04-01,09:20,S 14800CE; S 14800PE,75,3267.38,122171.77,,,,,,
+2021-04-08,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹123,156, available ₹90,000",100000.0,2021-04-08,09:20,S 14950CE; S 14950PE,75,2652.0,123156.0,,,,,,
+2021-04-15,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹120,025, available ₹90,000",100000.0,2021-04-15,09:20,S 14550CE; S 14550PE,75,2681.35,120025.12,,,,,,
+2021-04-22,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹116,863, available ₹90,000",100000.0,2021-04-22,09:20,S 14150CE; S 14150PE,75,3427.27,116862.9,,,,,,
+2021-04-29,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹124,019, available ₹90,000",100000.0,2021-04-29,09:20,S 15050CE; S 15050PE,75,2869.74,124018.95,,,,,,
+2022-07-07,NIFTY,straddle NIFTY,ENTER,predefined setup at its scheduled time,100000.0,2022-07-07,09:20,S 16100CE; S 16100PE,50,2269.91,88628.1,1,50,88628.1,2269.91,,
+2022-07-07,NIFTY,straddle NIFTY,EXIT,stop-loss honoured on a short leg; rest closed 15:15,100000.0,2022-07-07,09:20,S 16100CE; S 16100PE,50,2269.91,88628.1,,,,,1170.05,106.14
+2022-07-14,NIFTY,straddle NIFTY,ENTER,predefined setup at its scheduled time,101170.05,2022-07-14,09:20,S 16050CE; S 16050PE,50,2211.97,88141.35,1,50,88141.35,2211.97,,
+2022-07-14,NIFTY,straddle NIFTY,EXIT,stop-loss honoured on a short leg; rest closed 15:15,101170.05,2022-07-14,09:20,S 16050CE; S 16050PE,50,2211.97,88141.35,,,,,-2220.56,108.03
+2022-07-21,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹90,819, available ₹89,055",98949.49,2022-07-21,09:20,S 16500CE; S 16500PE,50,1799.27,90819.3,,,,,,
+2022-07-28,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹92,267, available ₹89,055",98949.49,2022-07-28,09:20,S 16800CE; S 16800PE,50,2301.1,92267.45,,,,,,
+2023-10-05,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹107,453, available ₹89,055",98949.49,2023-10-05,09:20,S 19550CE; S 19550PE,50,1240.0,107453.22,,,,,,
+2023-10-12,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹109,044, available ₹89,055",98949.49,2023-10-12,09:20,S 19850CE; S 19850PE,50,1461.09,109043.83,,,,,,
+2023-10-19,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹107,464, available ₹89,055",98949.49,2023-10-19,09:20,S 19550CE; S 19550PE,50,1450.01,107464.5,,,,,,
+2023-10-26,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹104,544, available ₹89,055",98949.49,2023-10-26,09:20,S 19000CE; S 19000PE,50,1705.81,104544.0,,,,,,
+2024-09-05,NIFTY,straddle NIFTY,ENTER,predefined setup at its scheduled time,98949.49,2024-09-05,09:20,S 25250CE; S 25250PE,25,1171.88,69413.16,1,25,69413.16,1171.88,,
+2024-09-05,NIFTY,straddle NIFTY,EXIT,stop-loss honoured on a short leg; rest closed 15:15,98949.49,2024-09-05,09:20,S 25250CE; S 25250PE,25,1171.88,69413.16,,,,,978.24,100.35
+2024-09-12,NIFTY,straddle NIFTY,ENTER,predefined setup at its scheduled time,99927.72,2024-09-12,09:20,S 25000CE; S 25000PE,25,1504.26,68796.2,1,25,68796.2,1504.26,,
+2024-09-12,NIFTY,straddle NIFTY,EXIT,stop-loss honoured on a short leg; rest closed 15:15,99927.72,2024-09-12,09:20,S 25000CE; S 25000PE,25,1504.26,68796.2,,,,,1190.59,102.27
+2024-09-19,NIFTY,straddle NIFTY,ENTER,predefined setup at its scheduled time,101118.31,2024-09-19,09:20,S 25550CE; S 25550PE,25,1751.15,70272.54,1,25,70272.54,1751.15,,
+2024-09-19,NIFTY,straddle NIFTY,EXIT,stop-loss honoured on a short leg; rest closed 15:15,101118.31,2024-09-19,09:20,S 25550CE; S 25550PE,25,1751.15,70272.54,,,,,1822.44,103.38
+2024-09-26,NIFTY,straddle NIFTY,ENTER,predefined setup at its scheduled time,102940.75,2024-09-26,09:20,S 26050CE; S 26050PE,25,1045.44,71591.16,1,25,71591.16,1045.44,,
+2024-09-26,NIFTY,straddle NIFTY,EXIT,stop-loss honoured on a short leg; rest closed 15:15,102940.75,2024-09-26,09:20,S 26050CE; S 26050PE,25,1045.44,71591.16,,,,,1213.1,99.42
+2025-12-02,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹254,880, available ₹93,738",104153.85,2025-12-02,09:20,S 26150CE; S 26150PE,75,2635.69,254880.11,,,,,,
+2025-12-09,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹251,741, available ₹93,738",104153.85,2025-12-09,09:20,S 25800CE; S 25800PE,75,2907.96,251741.1,,,,,,
+2025-12-16,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹252,899, available ₹93,738",104153.85,2025-12-16,09:20,S 25950CE; S 25950PE,75,2383.76,252898.91,,,,,,
+2025-12-23,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹255,125, available ₹93,738",104153.85,2025-12-23,09:20,S 26150CE; S 26150PE,75,2390.49,255124.84,,,,,,
+2025-12-30,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹252,609, available ₹93,738",104153.85,2025-12-30,09:20,S 25900CE; S 25900PE,75,2057.02,252609.34,,,,,,
+2026-02-03,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹218,104, available ₹93,738",104153.85,2026-02-03,09:20,S 25800CE; S 25800PE,65,3195.91,218103.79,,,,,,
+2026-02-10,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹219,008, available ₹93,738",104153.85,2026-02-10,09:20,S 25900CE; S 25900PE,65,2610.33,219007.94,,,,,,
+2026-02-17,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹216,408, available ₹93,738",104153.85,2026-02-17,09:20,S 25600CE; S 25600PE,65,2890.44,216408.3,,,,,,
+2026-02-24,NIFTY,straddle NIFTY,SKIP,"insufficient margin: need ₹216,077, available ₹93,738",104153.85,2026-02-24,09:20,S 25550CE; S 25550PE,65,3128.03,216077.06,,,,,,

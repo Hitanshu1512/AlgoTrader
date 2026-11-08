@@ -85,8 +85,26 @@ def expiry_dates(index: str, trading_days: Sequence[date]) -> list[date]:
     first, last = days[0], days[-1] + timedelta(days=40)
     tset = set(days)
     out: set[date] = set()
+    monthly_weeks = {
+        d.isocalendar()[:2]
+        for rule in RULES[index]
+        if rule.kind == "monthly"
+        for d in _scheduled(rule, first, last)
+    }
     for rule in RULES[index]:
         for d in _scheduled(rule, first, last):
+            # No separate weekly contract in a week that has the monthly expiry (e.g. Bank
+            # Nifty Sep 2023 – Feb 2024: weekly Wednesday, monthly Thursday).
+            if rule.kind == "weekly" and d.isocalendar()[:2] in monthly_weeks:
+                monthly_same_day = any(
+                    r.kind == "monthly"
+                    and r.weekday == rule.weekday
+                    and r.start <= d
+                    and (r.end is None or d <= r.end)
+                    for r in RULES[index]
+                )
+                if not monthly_same_day:
+                    continue
             adj = d
             if d <= days[-1]:
                 while adj not in tset and adj >= first:

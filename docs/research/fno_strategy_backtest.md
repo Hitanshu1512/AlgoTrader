@@ -1,11 +1,13 @@
 # Index F&O Strategy Backtest: Nifty 50 & Bank Nifty
 
-Status: **Research complete. Strategy selected for paper trading, not for live money.** · Run date: 2026-11-07 · **Margin figures corrected 2026-11-07** (see [sampled-month study §8](sampled_month_backtest.md#8-correction-to-the-full-period-study))
+Status: **Research complete. Strategy selected for paper trading, not for live money.** · Run date: 2026-11-07 · **Margin figures corrected 2026-11-07** (see [sampled-month study §8](sampled_month_backtest.md#8-correction-to-the-full-period-study)) · **Bank Nifty figures re-run 2026-11-08** after an expiry-calendar fix (see note below)
 
 > **Read this first.**
 > * Option prices in this study are **modelled**, not recorded tick data. The model is anchored every day to real NSE closing prices and was validated on ~45,000 real option prices (§2.3). Its key untested assumption is how fast expiry-day options lose value *between* 11:00 and 15:15 (§6.4).
 > * SEBI's study of FY2024-25 found **91% of individual F&O traders lost money** (net losses of ₹1.06 lakh crore) [S1]. A good backtest is a reason to paper-trade, not proof of future profit.
 > * This is engineering research, not investment advice.
+
+> **Correction (2026-11-08):** the expiry calendar wrongly included 6 Bank Nifty Wednesday expiries between Sep 2023 and Feb 2024. In the week of the monthly expiry there was no separate weekly contract. The calendar now matches NSE's actual expiries exactly (Nifty 316/316 and Bank Nifty 258/258 dates, Apr 2020 – Apr 2026). All studies were re-run. Nifty results are unchanged; Bank Nifty results moved by about 1–3% (e.g. final rules on Bank Nifty: ₹4.89 → ₹4.83 lakh). No conclusion changed. The tables below are the corrected figures.
 
 ## 1. Summary
 
@@ -98,15 +100,15 @@ All use **community-standard parameters, not tuned values** (e.g. the AlgoTest "
 
 | Strategy | Nifty net (₹ lakh) | Nifty Sharpe | Nifty max DD (₹) | Bank Nifty net (₹ lakh) | Bank Nifty Sharpe | Bank Nifty max DD (₹) | Win % (N / BN) | Profitable years (N · BN) |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 920 short strangle | +2.50 | 2.90 | 10,033 | +3.23 | 2.92 | 19,126 | 66 / 66 | 6/6 · 6/6 |
-| Expiry-day straddle | +2.63 | 2.36 | 14,741 | +2.53 | 1.83 | 19,155 | 65 / 63 | 5/6 · 5/6 |
-| 920 short straddle | +4.22 | 1.78 | 60,524 | +3.38 | 1.09 | 77,033 | 60 / 57 | 5/6 · 4/6 |
+| 920 short strangle | +2.50 | 2.90 | 10,033 | +3.15 | 2.84 | 19,126 | 66 / 66 | 6/6 · 6/6 |
+| Expiry-day straddle | +2.63 | 2.36 | 14,741 | +2.46 | 1.80 | 19,155 | 65 / 63 | 5/6 · 5/6 |
+| 920 short straddle | +4.22 | 1.78 | 60,524 | +3.22 | 1.04 | 77,033 | 60 / 57 | 5/6 · 4/6 |
 | Supertrend futures | +1.95 | 0.21 | 4,66,303 | +5.16 | 0.42 | 3,34,694 | 37 / 39 | 3/6 · 4/6 |
-| Low-VIX long straddle | −1.09 | −0.82 | 1,11,135 | −0.34 | −0.20 | 1,12,468 | 40 / 45 | 2/6 · 2/6 |
-| Weekly iron condor | −0.59 | −0.41 | 1,10,709 | −1.34 | −1.01 | 1,74,857 | 76 / 70 | 2/6 · 2/6 |
-| Trend credit spread | −1.03 | −0.98 | 1,09,414 | −0.76 | −0.78 | 81,356 | 73 / 73 | 1/6 · 0/6 |
-| ORB option buying | −4.82 | −1.72 | 4,96,352 | −6.84 | −1.68 | 6,99,859 | 36 / 35 | 0/6 · 0/6 |
-| 920 iron fly | −4.69 | −3.96 | 4,77,795 | −6.08 | −3.95 | 6,23,066 | 37 / 38 | 0/6 · 0/6 |
+| Low-VIX long straddle | −1.09 | −0.82 | 1,11,135 | −0.35 | −0.20 | 1,12,468 | 40 / 45 | 2/6 · 2/6 |
+| Weekly iron condor | −0.59 | −0.41 | 1,10,709 | −1.30 | −0.98 | 1,70,521 | 76 / 70 | 2/6 · 2/6 |
+| Trend credit spread | −1.03 | −0.98 | 1,09,414 | −0.76 | −0.79 | 81,596 | 73 / 73 | 1/6 · 0/6 |
+| ORB option buying | −4.82 | −1.72 | 4,96,352 | −6.82 | −1.68 | 6,97,955 | 36 / 35 | 0/6 · 0/6 |
+| 920 iron fly | −4.69 | −3.96 | 4,77,795 | −6.12 | −3.99 | 6,26,558 | 37 / 37 | 0/6 · 0/6 |
 | EMA 9/21 intraday futures | −35.97 | −4.63 | 36,09,243 | −43.17 | −4.20 | 43,36,613 | 28 / 29 | 0/6 · 0/6 |
 
 ![Screen results](img/screen_net_pnl.png)
@@ -126,17 +128,17 @@ Every shortlisted strategy was rerun on: the 2020–22 / 2023–25 halves; the p
 | Strategy | Index | Full | 2020–22 | 2023–25 | Since Nov 2024 | Stress fills | 2017–Apr 2020 | COVID Feb–Apr 2020 | Settings profitable | Bootstrap 95th-pct DD |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 920 short strangle | Nifty | +2.50 | +1.43 | +1.06 | +0.51 | +0.58 | +0.31 | −0.06 | 12/12 | ₹17,007 |
-| 920 short strangle | Bank Nifty | +3.23 | +2.38 | +0.86 | +0.09 | +0.39 | +1.98 | −0.01 | 12/12 | ₹27,209 |
+| 920 short strangle | Bank Nifty | +3.15 | +2.38 | +0.77 | +0.09 | +0.31 | +1.98 | −0.01 | 12/12 | ₹28,246 |
 | 920 hedged strangle | Nifty | −2.18 | −1.00 | −1.18 | −0.46 | −4.43 | −0.88 | +0.05 | 0/18 | ₹2,87,243 |
-| 920 hedged strangle | Bank Nifty | −1.66 | −0.42 | −1.23 | −0.71 | −4.71 | +0.23 | +0.02 | 2/18 | ₹2,79,282 |
+| 920 hedged strangle | Bank Nifty | −1.69 | −0.42 | −1.26 | −0.71 | −4.74 | +0.23 | +0.02 | 2/18 | ₹2,80,602 |
 | **Expiry-day straddle** | **Nifty** | **+2.63** | **+1.54** | **+1.10** | **+0.43** | **+1.44** | **+0.79** | **+0.19** | **12/12** | **₹23,940** |
-| Expiry-day straddle | Bank Nifty | +2.53 | +1.84 | +0.69 | −0.03 | +1.11 | +1.70 | +0.23 | 12/12 | ₹33,152 |
+| Expiry-day straddle | Bank Nifty | +2.46 | +1.84 | +0.62 | −0.03 | +1.07 | +1.70 | +0.23 | 12/12 | ₹31,488 |
 | 920 short straddle | Nifty | +4.22 | +2.42 | +1.80 | +0.79 | **−1.18** | +0.71 | −0.20 | 15/15 | ₹64,305 |
-| 920 short straddle | Bank Nifty | +3.38 | +3.03 | +0.35 | −0.66 | **−4.80** | +3.62 | +0.21 | 15/15 | ₹1,35,837 |
+| 920 short straddle | Bank Nifty | +3.22 | +3.03 | +0.19 | −0.66 | **−4.93** | +3.62 | +0.21 | 15/15 | ₹1,42,145 |
 | Supertrend futures | Nifty | +1.95 | +2.84 | **−0.78** | +0.91 | +0.53 | +1.89 | +1.99 | 11/12 | ₹7,28,710 |
 | Supertrend futures | Bank Nifty | +5.16 | +4.12 | +1.18 | −0.28 | +3.35 | +1.79 | +0.16 | 10/12 | ₹7,45,003 |
 | Weekly iron condor | Nifty | −0.59 | +0.11 | −0.70 | −0.49 | −0.85 | −0.01 | −0.09 | **0/18** | ₹2,04,663 |
-| Weekly iron condor | Bank Nifty | −1.34 | −0.94 | −0.40 | −0.05 | −1.64 | +0.34 | −0.18 | **0/18** | ₹2,58,565 |
+| Weekly iron condor | Bank Nifty | −1.30 | −0.94 | −0.36 | −0.05 | −1.60 | +0.34 | −0.18 | **0/18** | ₹2,54,860 |
 
 (Net P&L in ₹ lakh per lot.)
 
@@ -214,7 +216,7 @@ Buying ~0.01-delta wings (far out-of-the-money, very cheap on expiry morning) co
 
 Block-bootstrap drawdown (2,000 resampled histories): median ₹8,502, 95th percentile ₹12,813, 99th percentile ₹15,686 per lot.
 
-The same rules on Bank Nifty: ₹4.89 lakh, Sharpe 3.71, holdout Sharpe 3.31. That confirms the effect isn't specific to Nifty, but there are only 12 Bank Nifty expiries a year now.
+The same rules on Bank Nifty: ₹4.83 lakh, Sharpe 3.67, holdout Sharpe 3.22. That confirms the effect isn't specific to Nifty, but there are only 12 Bank Nifty expiries a year now.
 
 ### 6.3 Capital and realistic expectations
 

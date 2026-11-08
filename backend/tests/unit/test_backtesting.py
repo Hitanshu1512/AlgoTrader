@@ -45,6 +45,19 @@ def test_expiry_calendar(index: str, on: date, expected: date) -> None:
     assert ExpiryCalendar(index, DAYS).nearest(on) == expected
 
 
+def test_no_weekly_contract_in_monthly_expiry_week() -> None:
+    # Verified against NSE bhavcopies: Bank Nifty Sep 2023 – Feb 2024 had no Wednesday weekly
+    # in the week of the (Thursday) monthly expiry.
+    cal = ExpiryCalendar("BANKNIFTY", DAYS)
+    for fake, real in (
+        (date(2023, 10, 25), date(2023, 10, 26)),
+        (date(2023, 11, 29), date(2023, 11, 30)),
+        (date(2024, 2, 28), date(2024, 2, 29)),
+    ):
+        assert not cal.is_expiry(fake)
+        assert cal.nearest(fake - timedelta(days=1)) == real
+
+
 def test_option_charges_breakdown() -> None:
     # ₹100 premium × 65 qty = ₹6,500 turnover.
     sell = option_order_cost(100, 65, "SELL")

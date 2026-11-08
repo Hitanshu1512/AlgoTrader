@@ -30,3 +30,17 @@ def draw() -> dict[int, int]:
 
 if __name__ == "__main__":
     print(json.dumps(draw()))
+
+
+# ───────────── Stage 2: one NEW month per year, excluding the stage-1 months ─────────────
+SEED_STAGE2 = 20261109
+
+
+def stage2_eligible() -> dict[int, list[int]]:
+    used = draw()
+    return {y: [m for m in ms if m != used[y]] for y, ms in ELIGIBLE.items()}
+
+
+def draw_stage2() -> dict[int, int]:
+    rng = np.random.default_rng(SEED_STAGE2)
+    return {y: int(rng.choice(m)) for y, m in stage2_eligible().items()}

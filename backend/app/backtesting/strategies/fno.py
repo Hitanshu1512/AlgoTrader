@@ -85,6 +85,109 @@ def _naked_margin(ctx: Ctx, spot: float, d: date, lot: int) -> float:
 # ───────────────────────── intraday short premium ─────────────────────────
 
 
+@dataclass
+class Setup:
+    """A fully specified entry decided at ``entry_bar`` (legs priced per 1 lot)."""
+
+    name: str
+    index: str
+    day: date
+    expiry: date
+    legs: list[Leg]
+    entry_bar: int
+    exit_bar: int
+    leg_sl_pct: float | None
+    lot: int
+    spot: float
+    path: Path
+    pricer: LegPricer
+
+    def run(
+        self,
+        lots: int = 1,
+        slip: Slippage | None = None,
+        comb_sl: float | None = None,
+        margin: float = 0.0,
+    ) -> Trade:
+        return simulate_options(
+            self.name,
+            self.index,
+            self.pricer,
+            self.legs,
+            self.entry_bar,
+            self.exit_bar,
+            self.lot * lots,
+            slip or Slippage(),
+            margin,
+            leg_sl_pct=self.leg_sl_pct,
+            comb_sl=comb_sl,
+        )
+
+
+def _wings(
+    ctx: Ctx,
+    pricer: LegPricer,
+    d: date,
+    e: date,
+    spot: float,
+    entry_bar: int,
+    hedge_delta: float,
+    kc: float,
+    kp: float,
+) -> list[Leg]:
+    hc = max(ctx.by_delta(pricer, d, e, spot, entry_bar, hedge_delta, True), kc + ctx.step)
+    hp = min(ctx.by_delta(pricer, d, e, spot, entry_bar, hedge_delta, False), kp - ctx.step)
+    return [Leg(hc, True, 1, e), Leg(hp, False, 1, e)]
+
+
+def straddle_setup(
+    ctx: Ctx,
+    d: date,
+    sl: float,
+    entry_bar: int = ENTRY_920,
+    hedge_delta: float | None = None,
+    name: str = "straddle",
+) -> Setup:
+    e = ctx.cal.nearest(d)
+    lot = ctx.lot_for(d, e)
+    path, pricer = ctx.day_path(d)
+    spot = float(path.open[entry_bar])
+    k = ctx.atm(spot)
+    legs = [Leg(k, True, -1, e), Leg(k, False, -1, e)]
+    if hedge_delta is not None:
+        legs += _wings(ctx, pricer, d, e, spot, entry_bar, hedge_delta, k, k)
+    return Setup(name, ctx.index, d, e, legs, entry_bar, EXIT_1515, sl, lot, spot, path, pricer)
+
+
+def strangle_setup(
+    ctx: Ctx,
+    d: date,
+    delta: float,
+    sl: float,
+    entry_bar: int = ENTRY_920,
+    hedge_delta: float | None = None,
+    name: str = "strangle",
+) -> Setup:
+    e = ctx.cal.nearest(d)
+    lot = ctx.lot_for(d, e)
+    path, pricer = ctx.day_path(d)
+    spot = float(path.open[entry_bar])
+    kc = ctx.by_delta(pricer, d, e, spot, entry_bar, delta, True)
+    kp = ctx.by_delta(pricer, d, e, spot, entry_bar, delta, False)
+    legs = [Leg(kc, True, -1, e), Leg(kp, False, -1, e)]
+    if hedge_delta is not None:
+        legs += _wings(ctx, pricer, d, e, spot, entry_bar, hedge_delta, kc, kp)
+    return Setup(name, ctx.index, d, e, legs, entry_bar, EXIT_1515, sl, lot, spot, path, pricer)
+
+
+def _legacy_margin(ctx: Ctx, s: Setup) -> float:
+    if len(s.legs) == 2:
+        return _naked_margin(ctx, s.spot, s.day, s.lot)
+    short = [x.strike for x in s.legs if x.qty < 0]
+    wings = [x.strike for x in s.legs if x.qty > 0]
+    return max(wings[0] - short[0], short[1] - wings[1]) * s.lot * 1.1
+
+
 def straddle_920(
     ctx: Ctx,
     sl: float = 0.25,
@@ -101,32 +204,8 @@ def straddle_920(
             continue
         if expiry_only and not ctx.cal.is_expiry(d):
             continue
-        e = ctx.cal.nearest(d)
-        lot = ctx.lot_for(d, e)
-        path, pricer = ctx.day_path(d)
-        spot = float(path.open[entry_bar])
-        k = ctx.atm(spot)
-        legs = [Leg(k, True, -1, e), Leg(k, False, -1, e)]
-        margin = _naked_margin(ctx, spot, d, lot)
-        if hedge_delta is not None:
-            hc = max(ctx.by_delta(pricer, d, e, spot, entry_bar, hedge_delta, True), k + ctx.step)
-            hp = min(ctx.by_delta(pricer, d, e, spot, entry_bar, hedge_delta, False), k - ctx.step)
-            legs += [Leg(hc, True, 1, e), Leg(hp, False, 1, e)]
-            margin = max(hc - k, k - hp) * lot * 1.1
-        out.append(
-            simulate_options(
-                name,
-                ctx.index,
-                pricer,
-                legs,
-                entry_bar,
-                EXIT_1515,
-                lot,
-                ctx.slip,
-                margin,
-                leg_sl_pct=sl,
-            )
-        )
+        s = straddle_setup(ctx, d, sl, entry_bar, hedge_delta, name)
+        out.append(s.run(1, ctx.slip, margin=_legacy_margin(ctx, s)))
     return out
 
 
@@ -144,33 +223,8 @@ def strangle_920(
     for d in ctx.sessions:
         if not ctx.may_enter(d):
             continue
-        e = ctx.cal.nearest(d)
-        lot = ctx.lot_for(d, e)
-        path, pricer = ctx.day_path(d)
-        spot = float(path.open[entry_bar])
-        kc = ctx.by_delta(pricer, d, e, spot, entry_bar, delta, True)
-        kp = ctx.by_delta(pricer, d, e, spot, entry_bar, delta, False)
-        legs = [Leg(kc, True, -1, e), Leg(kp, False, -1, e)]
-        margin = _naked_margin(ctx, spot, d, lot)
-        if hedge_delta is not None:
-            hc = max(ctx.by_delta(pricer, d, e, spot, entry_bar, hedge_delta, True), kc + ctx.step)
-            hp = min(ctx.by_delta(pricer, d, e, spot, entry_bar, hedge_delta, False), kp - ctx.step)
-            legs += [Leg(hc, True, 1, e), Leg(hp, False, 1, e)]
-            margin = max(hc - kc, kp - hp) * lot * 1.1
-        out.append(
-            simulate_options(
-                name,
-                ctx.index,
-                pricer,
-                legs,
-                entry_bar,
-                EXIT_1515,
-                lot,
-                ctx.slip,
-                margin,
-                leg_sl_pct=sl,
-            )
-        )
+        s = strangle_setup(ctx, d, delta, sl, entry_bar, hedge_delta, name)
+        out.append(s.run(1, ctx.slip, margin=_legacy_margin(ctx, s)))
     return out
 
 

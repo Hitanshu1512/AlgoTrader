@@ -9,19 +9,20 @@ Output: data/cache/lot_by_date.csv
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
 
 from research.lot_sizes import REPO, read
-from research.sample_months import draw
+from research.sample_months import draw, draw_stage2
 
 OUT = Path(__file__).resolve().parents[1] / "data" / "cache" / "lot_by_date.csv"
 
 
-def months_needed() -> list[str]:
+def months_needed(sample: dict[int, int] | None = None) -> list[str]:
     out = []
-    for y, m in draw().items():
+    for y, m in (sample or draw()).items():
         out.append(f"{y}/{m:02d}")
         ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
         out.append(f"{ny}/{nm:02d}")  # positional trades may exit in the next month
@@ -30,7 +31,8 @@ def months_needed() -> list[str]:
     return sorted(set(out))
 
 
-def main() -> None:
+def main(stage: str = "1") -> None:
+    sample = draw_stage2() if stage == "2" else draw()
     files = subprocess.run(
         ["git", "-C", str(REPO), "ls-tree", "-r", "--name-only", "HEAD", "data/"],
         capture_output=True,
@@ -38,7 +40,7 @@ def main() -> None:
         check=True,
     ).stdout.split()
     rows = []
-    for m in months_needed():
+    for m in months_needed(sample):
         fs = sorted(f for f in files if f.startswith(f"data/{m}/") and f.endswith(".zip"))
         if not fs:
             continue
@@ -74,6 +76,10 @@ def main() -> None:
             (REPO / f).unlink()
         print(m, "done", flush=True)
     out = pd.DataFrame(rows, columns=["date", "symbol", "expiry", "lot"])
+    if OUT.exists():  # merge with lots already extracted for other months
+        prev = pd.read_csv(OUT, parse_dates=["date", "expiry"])
+        prev["date"], prev["expiry"] = prev["date"].dt.date, prev["expiry"].dt.date
+        out = pd.concat([prev, out]).drop_duplicates(["date", "symbol", "expiry"], keep="last")
     OUT.write_text(out.to_csv(index=False))
     print(
         out.groupby(["symbol", out["date"].astype(str).str[:7]])["lot"]
@@ -83,4 +89,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(*sys.argv[1:])

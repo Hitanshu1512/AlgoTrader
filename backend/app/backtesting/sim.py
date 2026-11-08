@@ -78,6 +78,7 @@ class Trade:
     )  # strike, call, qty, px
     expiry: date | None = None
     orders: int = 0
+    slippage: float = 0.0  # ₹ lost to modelled bid-ask spread / impact (already in gross)
 
     @property
     def net(self) -> float:
@@ -153,6 +154,7 @@ def simulate_options(
     n = exit_ - entry + 1
     fills0 = []
     costs = 0.0
+    slip_cost = 0.0
     entry_day = path.days[path.day_pos[entry]]
     exit_day_holder = [entry_day]
 
@@ -163,6 +165,7 @@ def simulate_options(
         px = a["open"][0]
         fill = px - slip.option(px) if leg.qty < 0 else px + slip.option(px)
         fills0.append(max(fill, 0.05))
+        slip_cost += slip.option(px) * abs(leg.qty) * lot
         costs += option_order_cost(
             fill, abs(leg.qty) * lot, "SELL" if leg.qty < 0 else "BUY", on(entry_day)
         )
@@ -174,8 +177,9 @@ def simulate_options(
     exit_pos = n - 1  # relative bar index where remaining legs exit at open
 
     def leg_exit(j: int, px: float) -> float:
-        nonlocal costs
+        nonlocal costs, slip_cost
         fill = px + slip.option(px) if legs[j].qty < 0 else max(px - slip.option(px), 0.05)
+        slip_cost += abs(fill - px) * abs(legs[j].qty) * lot
         costs += option_order_cost(
             fill,
             abs(legs[j].qty) * lot,
@@ -314,6 +318,7 @@ def simulate_options(
         fills=[(leg.strike, leg.is_call, leg.qty, float(p0[j])) for j, leg in enumerate(legs)],
         expiry=min(leg.expiry for leg in legs),
         orders=2 * len(legs),
+        slippage=float(slip_cost),
     )
 
 
